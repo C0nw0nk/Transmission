@@ -28,9 +28,9 @@ https://github.com/C0nw0nk/ExtractNow
 
 # Setup
 
-All you need is Transmission Installed
+All you need is Transmission Installed | https://transmissionbt.com/download
 
-A VPN PrivateInternetAccess is the one i built it for i can add other VPNs
+A VPN PrivateInternetAccess is the one i built it for i can add other VPNs | https://www.privateinternetaccess.com/download/windows-vpn
 
 # Settings
 
