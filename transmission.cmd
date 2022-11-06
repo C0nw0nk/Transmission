@@ -90,7 +90,7 @@ if defined connect_new (
 )
 
 for /f "tokens=*" %%a in ('
-%PIA_path% get requestportforward
+%PIA_path% get requestportforward 2^>nul
 ') do (
 	if /I %%a == false (
 		%PIA_path% ^set requestportforward true
@@ -102,7 +102,7 @@ for /f "tokens=*" %%a in ('
 :recheck_portforward
 
 for /f "tokens=*" %%a in ('
-%PIA_path% get portforward
+%PIA_path% get portforward 2^>nul
 ') do (
 	if /I %%a == Inactive (
 		set connect_new=true
@@ -141,7 +141,7 @@ echo rechecking difference with ports
 if defined  old_peer_port (
 	if /I %old_peer_port% == %peer-port% (
 		echo unchanged port going to recheck again in %port_recheck_time% seconds
-		timeout /t %port_recheck_time%
+		timeout /t %port_recheck_time% >nul
 		goto :recheck_portforward
 	) else (
 		echo port changed modifying settings
@@ -168,7 +168,23 @@ for /F "tokens=1* delims=:" %%A in (%settings_file_path%) do (
 					if /I %%A == ^ ^ ^ ^ ^"incomplete^-dir^" (
 						echo %%A: %transmission_incomplete_directory%,>>"%TEMP%\%settings_file%"
 					) else (
-						echo %%A:%%B>>"%TEMP%\%settings_file%"
+						if /I %%A == ^ ^ ^ ^ ^"speed^-limit^-down^" (
+							echo %%A: 1,>>"%TEMP%\%settings_file%"
+						) else (
+							if /I %%A == ^ ^ ^ ^ ^"speed^-limit^-down^-enabled^" (
+								echo %%A: false,>>"%TEMP%\%settings_file%"
+							) else (
+								if /I %%A == ^ ^ ^ ^ ^"speed^-limit^-up^" (
+									echo %%A: 1,>>"%TEMP%\%settings_file%"
+								) else (
+									if /I %%A == ^ ^ ^ ^ ^"speed^-limit^-up^-enabled^" (
+										echo %%A: true,>>"%TEMP%\%settings_file%"
+									) else (
+										echo %%A:%%B>>"%TEMP%\%settings_file%"
+									)
+								)
+							)
+						)
 					)
 				)
 			)
@@ -192,7 +208,23 @@ for /F "tokens=1* delims=:" %%A in (%transmission_daemon_settings%) do (
 					if /I %%A == ^ ^ ^ ^ ^"incomplete^-dir^" (
 						echo %%A: %transmission_incomplete_directory%,>>"%TEMP%\daemon%settings_file%"
 					) else (
-						echo %%A:%%B>>"%TEMP%\daemon%settings_file%"
+						if /I %%A == ^ ^ ^ ^ ^"speed^-limit^-down^" (
+							echo %%A: 1,>>"%TEMP%\daemon%settings_file%"
+						) else (
+							if /I %%A == ^ ^ ^ ^ ^"speed^-limit^-down^-enabled^" (
+								echo %%A: false,>>"%TEMP%\daemon%settings_file%"
+							) else (
+								if /I %%A == ^ ^ ^ ^ ^"speed^-limit^-up^" (
+									echo %%A: 1,>>"%TEMP%\daemon%settings_file%"
+								) else (
+									if /I %%A == ^ ^ ^ ^ ^"speed^-limit^-up^-enabled^" (
+										echo %%A: true,>>"%TEMP%\daemon%settings_file%"
+									) else (
+										echo %%A:%%B>>"%TEMP%\daemon%settings_file%"
+									)
+								)
+							)
+						)
 					)
 				)
 			)
@@ -200,8 +232,12 @@ for /F "tokens=1* delims=:" %%A in (%transmission_daemon_settings%) do (
     )
 )
 
-taskkill /im %transmission_daemon_exe% /t /f >nul
-taskkill /im %transmission_qt_exe% /t /f >nul
+for /f "tokens=*" %%a in ('
+taskkill /im %transmission_daemon_exe% /t /f 2^>Nul
+') do break
+for /f "tokens=*" %%a in ('
+taskkill /im %transmission_qt_exe% /t /f 2^>Nul
+') do break
 
 move /Y "%TEMP%\%settings_file%" %settings_file_path% >nul
 move /Y "%TEMP%\daemon%settings_file%" %transmission_daemon_settings% >nul
