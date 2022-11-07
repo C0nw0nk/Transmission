@@ -19,8 +19,11 @@ SHIB SHIBA INU : `0x39443a61368D4208775Fd67913358c031eA86D59`
 # Script Features
 
 Automatically recheck VPN portforwarding and change Transmission settings to the VPN port
+
 Automatically set download folder paths for torrents
+
 Automatically set upload speed for torrents 1kbps lets save bandwidth guys!
+
 Automatically set download speed for torrents Unlimited lets download fast!
 
 # Optional
