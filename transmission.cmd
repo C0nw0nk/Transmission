@@ -36,10 +36,14 @@ set transmission_daemon_exe=transmission-daemon.exe
 ::Transmission Daemon service settings location
 set transmission_daemon_settings=C:\Windows\ServiceProfiles\LocalService\AppData\Local\transmission-daemon\settings.json
 
-::download-dir as a example i have shown a network sharing path you can change it to a drive path like C:\path
+::download-dir as a example i have shown a network sharing path you can change it to a drive path like C:\\path
+::double back slashes on path is mandatory for path to be recognized by transmission
+::set transmission_download_directory="C:\\Users\\con\\Downloads"
 set transmission_download_directory="\\\\con-laptop\\d\\transmission\\complete"
 
-::incomplete-dir as a example i have shown a network sharing path you can change it to a drive path like C:\path
+::incomplete-dir as a example i have shown a network sharing path you can change it to a drive path like C:\\path
+::double back slashes on path is mandatory for path to be recognized by transmission
+::set transmission_incomplete_directory="C:\\Users\\con\\Downloads"
 set transmission_incomplete_directory="\\\\con-laptop\\d\\transmission\\incomplete"
 
 ::PIA installation path PrivateInternetAccess VPN
@@ -47,6 +51,14 @@ set PIA_path="C:\Program Files\Private Internet Access\piactl.exe"
 
 ::Check for port change every 60 seconds if the port changes we will set the port as the new vpn portforward
 set port_recheck_time=60
+
+::Speed that transmission torrent client downloads at in kB/s i set default at 0 download speed unlimited
+:: 0 = Unlimited download speed
+set transmission_download_speed=0
+
+::Speed that transmission torrent client uploads at in kB/s i set default at 1kB per second save bandwidth
+:: 0 = Unlimited upload speed
+set transmission_upload_speed=1
 
 :: End Edit DO NOT TOUCH ANYTHING BELOW THIS POINT UNLESS YOU KNOW WHAT YOUR DOING!
 
@@ -60,33 +72,49 @@ if not exist "%settings_file_path%" goto :settings_incorrect
 if not exist "%transmission_path%" goto :transmission_not_installed
 if not exist %PIA_path% goto :PIA_not_installed
 
-rem Make sure that the temporary files used does not exist already.
+::enable or disable download and upload speed
+if /I %transmission_download_speed% == 0 (
+	set transmission_download_speed_enabled=false
+) else (
+	set transmission_download_speed_enabled=true
+)
+if /I %transmission_upload_speed% == 0 (
+	set transmission_upload_speed_enabled=false
+) else (
+	set transmission_upload_speed_enabled=true
+)
+
+::5 seconds to wait for vpn to establish connection to perform check on port
+set connection_time=5
+
+::Make sure that the temporary files used does not exist already.
 del "%TEMP%\%settings_file%" 2>nul
 del "%TEMP%\daemon%settings_file%" 2>nul
 del "%TEMP%\regions.txt" 2>nul
 
 for /f "tokens=*" %%a in ('
-%PIA_path% get regions
+%PIA_path% get regions 2^>nul
 ') do (
 	if /I %%a == auto (
-		echo nothing
+		break
 	) else (
-		echo %%a>>"%TEMP%\regions.txt"2>&1
+		echo %%a>>"%TEMP%\regions.txt"
 	)
 )
 
 :random_country
 
+::153 lines of text
 set /a rand=%random% %% 153
 for /f "tokens=1* delims=:" %%i in ('findstr /n .* "%TEMP%\regions.txt"') do (
 if "%%i"=="%rand%" set random_country=%%j
 )
-echo %random_country%
+echo Random Country to connect to : %random_country%
 if defined connect_new (
 	echo current vpn server does not allow port forward connecting to a different one
 	%PIA_path% ^set region %random_country%
 	%PIA_PATH% connect
-	timeout /t 5 >nul
+	timeout /t %connection_time% >nul
 )
 
 for /f "tokens=*" %%a in ('
@@ -122,8 +150,8 @@ for /f "tokens=*" %%a in ('
 	set portforward=%%a
 )
 set peer-port=%portforward%
-echo %portforward%
-timeout /t 5 >nul
+echo Currently forwarding Port : %portforward%
+timeout /t %connection_time% >nul
 
 if defined old_peer_port (goto :checkme) else (goto :next_stage)
 :checkme
@@ -169,16 +197,16 @@ for /F "tokens=1* delims=:" %%A in (%settings_file_path%) do (
 						echo %%A: %transmission_incomplete_directory%,>>"%TEMP%\%settings_file%"
 					) else (
 						if /I %%A == ^ ^ ^ ^ ^"speed^-limit^-down^" (
-							echo %%A: 1,>>"%TEMP%\%settings_file%"
+							echo %%A: %transmission_download_speed%,>>"%TEMP%\%settings_file%"
 						) else (
 							if /I %%A == ^ ^ ^ ^ ^"speed^-limit^-down^-enabled^" (
-								echo %%A: false,>>"%TEMP%\%settings_file%"
+								echo %%A: %transmission_download_speed_enabled%,>>"%TEMP%\%settings_file%"
 							) else (
 								if /I %%A == ^ ^ ^ ^ ^"speed^-limit^-up^" (
-									echo %%A: 1,>>"%TEMP%\%settings_file%"
+									echo %%A: %transmission_upload_speed%,>>"%TEMP%\%settings_file%"
 								) else (
 									if /I %%A == ^ ^ ^ ^ ^"speed^-limit^-up^-enabled^" (
-										echo %%A: true,>>"%TEMP%\%settings_file%"
+										echo %%A: %transmission_upload_speed_enabled%,>>"%TEMP%\%settings_file%"
 									) else (
 										echo %%A:%%B>>"%TEMP%\%settings_file%"
 									)
@@ -209,16 +237,16 @@ for /F "tokens=1* delims=:" %%A in (%transmission_daemon_settings%) do (
 						echo %%A: %transmission_incomplete_directory%,>>"%TEMP%\daemon%settings_file%"
 					) else (
 						if /I %%A == ^ ^ ^ ^ ^"speed^-limit^-down^" (
-							echo %%A: 1,>>"%TEMP%\daemon%settings_file%"
+							echo %%A: %transmission_download_speed%,>>"%TEMP%\daemon%settings_file%"
 						) else (
 							if /I %%A == ^ ^ ^ ^ ^"speed^-limit^-down^-enabled^" (
-								echo %%A: false,>>"%TEMP%\daemon%settings_file%"
+								echo %%A: %transmission_download_speed_enabled%,>>"%TEMP%\daemon%settings_file%"
 							) else (
 								if /I %%A == ^ ^ ^ ^ ^"speed^-limit^-up^" (
-									echo %%A: 1,>>"%TEMP%\daemon%settings_file%"
+									echo %%A: %transmission_upload_speed%,>>"%TEMP%\daemon%settings_file%"
 								) else (
 									if /I %%A == ^ ^ ^ ^ ^"speed^-limit^-up^-enabled^" (
-										echo %%A: true,>>"%TEMP%\daemon%settings_file%"
+										echo %%A: %transmission_upload_speed_enabled%,>>"%TEMP%\daemon%settings_file%"
 									) else (
 										echo %%A:%%B>>"%TEMP%\daemon%settings_file%"
 									)
